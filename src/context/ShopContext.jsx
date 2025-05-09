@@ -17,66 +17,67 @@ const ShopContextProvider = ({ children }) => {
   const [token, setToken] = useState("");
   const navigate = useNavigate();
 
-  const addToCart = async (itemId, measurements, groupSize) => {
-    console.log("typeof measurements:", typeof measurements);
-    console.log("Array.isArray(measurements):", Array.isArray(measurements));
-    console.log("measurements:", measurements);
+const addToCart = async (itemId, measurements, groupSize) => {
+  // Check if user is logged in
+  if (!token) {
+    toast.error("Please log in to add items to your cart");
+    navigate("/login");
+    return;
+  }
 
-    // Ensure measurements is always an array
-    if (measurements && !Array.isArray(measurements)) {
-      measurements = [measurements]; // Wrap measurements in an array if it's an object
-    }
+  console.log("typeof measurements:", typeof measurements);
+  console.log("Array.isArray(measurements):", Array.isArray(measurements));
+  console.log("measurements:", measurements);
 
-    if (!measurements || measurements.length === 0) {
-      toast.error("Enter all product measurements");
-      return;
-    }
+  // Ensure measurements is always an array
+  if (measurements && !Array.isArray(measurements)) {
+    measurements = [measurements];
+  }
 
-    // Generate size key: join all individual measurement values
-    const sizeKey = measurements
-      .map((m) => Object.values(m).join("_")) // join values from each measurement object
-      .join("-"); // join all measurement objects in the array
+  if (!measurements || measurements.length === 0) {
+    toast.error("Enter all product measurements");
+    return;
+  }
 
-    let cartData = structuredClone(cartItems);
+  const sizeKey = measurements
+    .map((m) => Object.values(m).join("_"))
+    .join("-");
 
-    if (!cartData[itemId]) {
-      cartData[itemId] = {};
-    }
+  let cartData = structuredClone(cartItems);
 
-    // Update cart quantity or add new entry
-    if (cartData[itemId][sizeKey]) {
-      cartData[itemId][sizeKey].quantity += 1;
-    } else {
-      cartData[itemId][sizeKey] = {
-        quantity: groupSize || 1,
+  if (!cartData[itemId]) {
+    cartData[itemId] = {};
+  }
+
+  if (cartData[itemId][sizeKey]) {
+    cartData[itemId][sizeKey].quantity += 1;
+  } else {
+    cartData[itemId][sizeKey] = {
+      quantity: groupSize || 1,
+      measurements,
+    };
+  }
+
+  setCartItems(cartData);
+
+  try {
+    await axios.post(
+      backendUrl + "/api/cart/add",
+      {
+        itemId,
         measurements,
-      };
-    }
-
-    setCartItems(cartData);
-    // toast.success("Added to cart");
-
-    // Send cart data to the backend if a token is available
-    if (token) {
-      try {
-        await axios.post(
-          backendUrl + "/api/cart/add",
-          {
-            itemId,
-            measurements,
-            groupSize,
-            sizeKey,
-          },
-          {
-            headers: { token },
-          }
-        );
-      } catch (error) {
-        console.log(error);
-        toast.error(error.message);
+        groupSize,
+        sizeKey,
+      },
+      {
+        headers: { token },
       }
-    }
-  };
+    );
+  } catch (error) {
+    console.log(error);
+    toast.error(error.message);
+  }
+};
 
   const getCartCount = () => {
     let totalCount = 0;
